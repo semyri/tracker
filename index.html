@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Parts Tracker</title>
+<style>
+body {
+  font-family: sans-serif;
+}
+
+h1, h2 {
+  color: #333;
+}
+
+form {
+  width: 100%;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: calc(100% - 12px);
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+button[type="submit"] {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background-color: #45a049;
+}
+
+#addPartMessage, #getAllPartsMessage, .editMessage {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  display: none;
+}
+
+#addPartMessage.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+#addPartMessage.error, #getAllPartsMessage.error, .editMessage.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#results {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  white-space: pre-wrap;
+}
+
+button {
+  margin-right: 10px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+table {
+  width: 80%;
+  margin: 20px auto;
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}
+
+.add-part-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  width: fit-content;
+}
+
+.add-part-form label {
+  margin-right: 5px;
+  min-width: 70px;
+  text-align: right;
+}
+
+.add-part-form input {
+  width: 200px;
+  margin-bottom: 10px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.add-part-form > div {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.add-part-form button {
+  padding: 10px 15px;
+  margin-top: 10px;
+  margin-left: 80px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.add-part-form button:hover {
+  background-color: #45a049;
+}
+</style>
+</head>
+<body onload="getAllParts()">
+  <div class="container">
+    <div class="add-part-form">
+      <form id="addPartForm">
+        <label for="partName">Part Name:</label>
+        <input type="text" id="partName" name="partName" required>
+
+        <label for="partNumber">Part Number:</label>
+        <input type="text" id="partNumber" name="partNumber" required>
+
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" min="0" required>
+
+        <label for="location">Location:</label>
+        <input type="text" id="location" name="location">
+
+        <label for="price">Price:</label>
+        <input type="number" id="price" name="price" min="0" step="0.01" required>
+
+        <label for="vendor">Vendor:</label>
+        <input type="text" id="vendor" name="vendor">
+        <div>
+          <button type="submit">Add Part</button>
+          <div id="addPartMessage"></div>
+        </div>
+      </form>
+    </div>
+    <h1>Parts Tracker</h1>
+
+    <h2>All Parts</h2>
+    <div id="getAllPartsMessage"></div>
+    <div id="partsTable"></div>
+
+    <script>
+      async function getAllParts() {
+        const response = await fetch('http://127.0.0.1:5000/parts');
+        try {
+          if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || response.statusText;
+            displayMessage("getAllParts", errorMessage);
+            return;
+          }
+          const data = await response.json();
+          displayParts(data.parts);
+        } catch (error) {
+          displayMessage("getAllParts", "Error fetching parts: " + error);
+        }
+      }
+
+      function displayParts(parts) {
+        const table = document.createElement('table');
+        const headerRow = table.insertRow();
+        ['Part ID', 'Part Name', 'Part Number', 'Quantity', 'Location', 'Price', 'Vendor', 'Actions'].forEach(headerText => {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          headerRow.appendChild(th);
+        });
+        parts.forEach(part => {
+          const row = table.insertRow();
+          part.forEach((cellData, index) => {
+            const cell = row.insertCell();
+            cell.textContent = cellData;
+          });
+          const actionsCell = row.insertCell();
+          const editButton = document.createElement('button');
+          editButton.textContent = 'Edit';
+          editButton.addEventListener('click', () => editPart(part[0]));
+          actionsCell.appendChild(editButton);
+
+          const deleteButton = document.createElement('button');
+          deleteButton.textContent = 'Delete';
+          deleteButton.addEventListener('click', () => deletePart(part[0]));
+          actionsCell.appendChild(deleteButton);
+        });
+        document.getElementById('partsTable').innerHTML = '';
+        document.getElementById('partsTable').appendChild(table);
+      }
+
+      document.getElementById('addPartForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const partData = {
+          partName: document.getElementById('partName').value,
+          partNumber: document.getElementById('partNumber').value,
+          quantity: parseInt(document.getElementById('quantity').value),
+          location: document.getElementById('location').value,
+          price: parseFloat(document.getElementById('price').value),
+          vendor: document.getElementById('vendor').value
+        };
+
+        try {
+          const response = await fetch('http://127.0.0.1:5000/parts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(partData)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || response.statusText;
+            displayMessage("addPart", errorMessage);
+            return;
+          }
+
+          const message = await response.json();
+          displayMessage("addPart", message.message);
+          document.getElementById('addPartForm').reset();
+
+        } catch (error) {
+          displayMessage("addPart", "Error adding part: " + error);
+        }
+      });
+
+      async function editPart(partId) {
+        try {
+          const response = await fetch(`http://127.0.0.1:5000/parts/${partId}`);
+          if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || response.statusText;
+            displayMessage("getAllParts", errorMessage);
+            return;
+          }
+          const partData = await response.json();
+
+          const editForm = document.createElement('form');
+          editForm.id = `editForm-${partId}`;
+          editForm.innerHTML = `
+            <label for="partName-${partId}">Part Name:</label>
+            <input type="text" id="partName-${partId}" value="${partData.partName}" required><br><br>
+            <label for="partNumber-${partId}">Part Number:</label>
+            <input type="text" id="partNumber-${partId}" value="${partData.partNumber}" required><br><br>
+            <label for="quantity-${partId}">Quantity:</label>
+            <input type="number" id="quantity-${partId}" value="${partData.quantity}" min="0" required><br><br>
+            <label for="location-${partId}">Location:</label>
+            <input type="text" id="location-${partId}" value="${partData.location}"><br><br>
+            <label for="price-${partId}">Price:</label>
+            <input type="number" id="price-${partId}" value="${partData.price}" min="0" step="0.01" required><br><br>
+            <label for="vendor-${partId}">Vendor:</label>
+            <input type="text" id="vendor-${partId}" value="${partData.vendor}"><br><br>
+            <button type="submit">Save Changes</button>
+            <div id="editMessage-${partId}" class="editMessage"></div>
+          `;
+
+          document.getElementById('partsTable').appendChild(editForm);
+
+          editForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const updatedPartData = {
+              partName: document.getElementById(`partName-${partId}`).value,
+              partNumber: document.getElementById(`partNumber-${partId}`).value,
+              quantity: parseInt(document.getElementById(`quantity-${partId}`).value),
+              location: document.getElementById(`location-${partId}`).value,
+              price: parseFloat(document.getElementById(`price-${partId}`).value),
+              vendor: document.getElementById(`vendor-${partId}`).value
+            };
+
+            try {
+              const response = await fetch(`http://127.0.0.1:5000/parts/${partId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedPartData)
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                const errorMessage = errorData.error || response.statusText;
+                displayMessage(`editMessage-${partId}`, errorMessage);
+                return;
+              }
+
+              const message = await response.json();
+              displayMessage(`editMessage-${partId}`, message.message);
+              getAllParts(); 
+              editForm.remove(); 
+            } catch (error) {
+              displayMessage(`editMessage-${partId}`, "Error updating part: " + error);
+            }
+          });
+        } catch (error) {
+          displayMessage("getAllParts", "Error fetching part details: " + error);
+        }
+      }
+
+      async function deletePart(partId) {
+          if (confirm(`Are you sure you want to delete part ID ${partId}?`)) {
+              try {
+                  const response = await fetch(`http://127.0.0.1:5000/parts/${partId}`, {
+                      method: 'DELETE'
+                  });
+                  if (!response.ok) {
+                      const errorData = await response.json();
+                      const errorMessage = errorData.error || response.statusText;
+                      displayMessage("getAllParts", errorMessage);
+                      return;
+                  }
+                  const message = await response.json();
+                  displayMessage("getAllParts", message.message);
+                  getAllParts(); 
+              } catch (error) {
+                  displayMessage("getAllParts", "Error deleting part: " + error);
+              }
+          }
+      }
+
+      function displayMessage(operation, message){
+        const messageDiv = document.getElementById(`${operation}Message`);
+        if(messageDiv){
+          messageDiv.textContent = message;
+          messageDiv.className = message.includes("successfully") ? "success" : "error";
+          messageDiv.style.display = "block";
+        }
+      }
+
+    </script>
+  </div>
+</body>
+</html>
