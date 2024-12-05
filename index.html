@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Disc Golf Scorecard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="new-round-button-container" style="display: none;">  
+    <button id="newRoundButton">New Round</button>
+  </div>
+
+  <div id="player-entry">
+    <label for="player-list">Players:</label>
+    <ul id="player-list"></ul>
+    <label for="player-name">Add Player:</label>
+    <input type="text" id="player-name" placeholder="Add Name">
+    <button type="button" id="addPlayerButton">Add Player</button>
+    <button type="button" id="startRoundButton">Start Round</button>
+  </div>
+
+  <div class="score-table-container">  <!-- Added container for scorecard -->
+    <div id="scorecard" style="display: none;">
+      <h2>Scorecard</h2>
+      <table id="score-table"></table>
+    </div>
+  </div>
+
+  <div id="round-summary" style="display: none;"> 
+    <h2>Round Summary</h2>
+    <table id="summary-table"></table>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
